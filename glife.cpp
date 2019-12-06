@@ -32,11 +32,11 @@ public:
 	void next();
 	void next(const int from, const int to);
 	
-	int isLive(int cols, int rows) { return (m_Grid[cols][rows] ? LIVE: DEAD); }
+	int isLive(int cols, int rows) { return (m_Grid[cols][rows]); }
 	int getNumOfNeighbors(int cols, int rows);
 	
-	void dead(int cols, int rows) { m_Temp[cols][rows] = 0; }
-	void live(int cols, int rows) { m_Temp[cols][rows] = 1; }
+	void dead(int cols, int rows) { m_Temp[cols][rows] = DEAD; }
+	void live(int cols, int rows) { m_Temp[cols][rows] = LIVE; }
 
 	int decGen() { return m_Generations--; }
 	void setGen(int n) { m_Generations = n; }
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 	inputFile.open(argv[1], ifstream::in);
 
 	if (inputFile.is_open() == false) {
-		cout << "The "<< argv[1] << " file can not be opend" << endl;
+		cout << "The "<< argv[1] << " file can not be opened" << endl;
 		return 1;
 	}
 	
@@ -128,6 +128,7 @@ void GameOfLifeGrid::next()
 
 int GameOfLifeGrid::getNumOfNeighbors(int cols, int rows)
 {
+	int numOfNeighbors = 0;
 	return numOfNeighbors;
 }
 
