@@ -32,8 +32,13 @@ public:
 	void next();
 	void next(const int from, const int to);
 	
-	int isLive(int cols, int rows) { return (m_Grid[cols][rows]); }
-	int getNumOfNeighbors(int cols, int rows);
+	int isLive(int cols, int rows) {
+		if (cols >= m_Cols || cols < 0 || rows >= m_Rows || rows < 0)
+			return DEAD;
+
+		return m_Grid[cols][rows]; 
+	}
+	int getNumOfLivingNeighbors(int col, int row);
 	
 	void dead(int cols, int rows) { m_Temp[cols][rows] = DEAD; }
 	void live(int cols, int rows) { m_Temp[cols][rows] = LIVE; }
@@ -62,6 +67,11 @@ private:
 GameOfLifeGrid* g_GameOfLifeGrid;
 int nprocs;
 
+struct range {
+	int from;
+	int to;
+};
+
 // Entry point
 int main(int argc, char* argv[])
 {
@@ -73,7 +83,7 @@ int main(int argc, char* argv[])
 	int status;
 
 	if (argc != 6) {
-		cout <<"Usage: " << argv[0] << " <input file> <nprocs> <# of generations> <width> <height>" << endl;
+		cout << "Usage: " << argv[0] << " <input file> <nprocs> <# of generations> <width> <height>" << endl;
 		return 1;
 	}
 
@@ -83,7 +93,7 @@ int main(int argc, char* argv[])
 		cout << "The "<< argv[1] << " file can not be opened" << endl;
 		return 1;
 	}
-	
+
 	//
 	nprocs = atoi(argv[2]);
 	gen = atoi(argv[3]);
@@ -96,6 +106,14 @@ int main(int argc, char* argv[])
 		inputFile >> x >> y;
 		g_GameOfLifeGrid->setCell(x, y);
 	}
+	inputFile.close();
+	
+	g_GameOfLifeGrid->dump();
+
+	while (g_GameOfLifeGrid->getGens() > 0) {
+		g_GameOfLifeGrid->next();
+		g_GameOfLifeGrid->dump();
+	}
 
 	gettimeofday(&start_time, NULL);
 
@@ -107,8 +125,6 @@ int main(int argc, char* argv[])
 	cout << "Execution Time: " << result_time.tv_sec <<  "s" << endl;
 	//g_GameOfLifeGrid->dumpCoordinate();
 
-	inputFile.close();
-
 	cout << "Program end... " << endl;
 	return 0;
 }
@@ -116,20 +132,55 @@ int main(int argc, char* argv[])
 // HINT: YOU MAY NEED TO FILL OUT BELOW FUNCTIONS
 void* workerThread(void *arg)
 {
+	range r = *(range*)arg;
+	g_GameOfLifeGrid->next(r.from, r.to);
 }
 
+// to = exclusive
 void GameOfLifeGrid::next(const int from, const int to)
 {
+	for (int row = from; row < to; row++) {
+		for (int col = 0; col < this->getCols(); col++) {
+			int countLiving = getNumOfLivingNeighbors(col, row);
+			countLiving += this->isLive(col, row);
+			if (countLiving == 4) {
+				// retain current state
+				m_Temp[col][row] = m_Grid[col][row];
+			}
+			else {
+				m_Temp[col][row] = countLiving == 3;
+			}
+		}
+	}
+
+	int** xchg = m_Temp;
+	m_Temp = m_Grid;
+	m_Grid = xchg;
+
+	this->decGen();
 }
 
 void GameOfLifeGrid::next()
 {
+	this->next(0, this->getRows() - 1);
 }
 
-int GameOfLifeGrid::getNumOfNeighbors(int cols, int rows)
+int GameOfLifeGrid::getNumOfLivingNeighbors(int col, int row)
 {
-	int numOfNeighbors = 0;
-	return numOfNeighbors;
+	int countLiving = 0;
+
+	countLiving += this->isLive(col - 1, row - 1);
+	countLiving += this->isLive(col + 0, row - 1);
+	countLiving += this->isLive(col + 1, row - 1);
+
+	countLiving += this->isLive(col - 1, row + 0);
+	countLiving += this->isLive(col + 1, row + 0);
+
+	countLiving += this->isLive(col - 1, row + 1);
+	countLiving += this->isLive(col + 0, row + 1);
+	countLiving += this->isLive(col + 1, row + 1);
+
+	return countLiving;
 }
 
 // HINT: YOU CAN MODIFY BELOW CODES IF YOU WANT
@@ -142,7 +193,7 @@ void GameOfLifeGrid::dump()
 		cout << "[" << i << "] ";
 		
 		for (int j=0; j < m_Rows; j++) {
-			cout << m_Grid[i][j] << ' ';
+			cout << m_Grid[i][j];
 		}
 		
 		cout << endl;
@@ -159,7 +210,8 @@ void GameOfLifeGrid::dumpCoordinate()
 
 		for (int j=0; j < m_Rows; j++) {
 
-			if (m_Grid[i][j]) cout << i << " " << j << endl;
+			if (m_Grid[i][j])
+				cout << i << " " << j << endl;
 		}
 	}
 }
