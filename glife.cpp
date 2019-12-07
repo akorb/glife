@@ -175,7 +175,6 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-// HINT: YOU MAY NEED TO FILL OUT BELOW FUNCTIONS
 void* workerThread(void *arg) {
 	range r = *(range*)arg;
 	for (int gen = ro_gen; gen > 0; gen--) {
@@ -214,6 +213,11 @@ void GameOfLifeGrid::next(const int from, const int to)
 	}
 }
 
+void GameOfLifeGrid::next()
+{
+	this->next(0, this->getRows() - 1);
+}
+
 void GameOfLifeGrid::update()
 {
 	int** xchg = m_Temp;
@@ -221,10 +225,6 @@ void GameOfLifeGrid::update()
 	m_Grid = xchg;
 }
 
-void GameOfLifeGrid::next()
-{
-	this->next(0, this->getRows() - 1);
-}
 
 int GameOfLifeGrid::getNumOfLivingNeighbors(int col, int row)
 {
@@ -250,11 +250,11 @@ void GameOfLifeGrid::dump()
 {
 	cout << "===============================" << endl;
 
-	for (int i=0; i < m_Cols; i++) {
+	for (int i = 0; i < m_Cols; i++) {
 		
 		cout << "[" << i << "] ";
 		
-		for (int j=0; j < m_Rows; j++) {
+		for (int j = 0; j < m_Rows; j++) {
 			cout << m_Grid[i][j];
 		}
 		
@@ -268,9 +268,9 @@ void GameOfLifeGrid::dumpCoordinate()
 {
 	cout << ":: Dump X-Y coordinate" << endl;
 
-	for (int i=0; i < m_Cols; i++) {
+	for (int i = 0; i < m_Cols; i++) {
 
-		for (int j=0; j < m_Rows; j++) {
+		for (int j = 0; j < m_Rows; j++) {
 
 			if (m_Grid[i][j])
 				cout << i << " " << j << endl;
@@ -295,24 +295,17 @@ GameOfLifeGrid::GameOfLifeGrid(int cols, int rows, int gen)
 		cout << "2 Memory allocation error " << endl;
 
 
-	m_Grid[0] = (int*)malloc(sizeof(int) * (cols*rows));
+	m_Grid[0] = (int*)calloc(cols * rows, sizeof(int));
 	if (m_Grid[0] == NULL) 
 		cout << "3 Memory allocation error " << endl;
 
-	m_Temp[0] = (int*)malloc(sizeof(int) * (cols*rows));	
+	m_Temp[0] = (int*)calloc(cols * rows, sizeof(int));	
 	if (m_Temp[0] == NULL) 
 		cout << "4 Memory allocation error " << endl;
 
 
 	for (int i = 1; i < cols; i++) {
-		m_Grid[i] = m_Grid[i-1] + rows;
-		m_Temp[i] = m_Temp[i-1] + rows;
-	}
-
-	// TODO: change to calloc
-	for (int i=0; i < cols; i++) {
-		for (int j=0; j < rows; j++) {
-			m_Grid[i][j] = m_Temp[i][j] = 0;
-		}
+		m_Grid[i] = m_Grid[i - 1] + rows;
+		m_Temp[i] = m_Temp[i - 1] + rows;
 	}
 }
