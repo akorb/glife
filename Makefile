@@ -1,5 +1,5 @@
-CC=gcc
-CFLAGS=-Wall -lstdc++ -pthread
+CC=g++
+CFLAGS=-Wall -pthread
 
 all:
 	$(CC) $(CFLAGS) -O3 -o glife glife.cpp
