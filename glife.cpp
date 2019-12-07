@@ -21,7 +21,6 @@ using namespace std;
 
 // function prototype
 void* workerThread(void *);
-void para_range(int, int, int, int, int*, int*);
 
 // 
 class GameOfLifeGrid {
@@ -31,6 +30,7 @@ public:
 	
 	void next();
 	void next(const int from, const int to);
+	void update();
 	
 	int isLive(int cols, int rows) {
 		if (cols >= m_Cols || cols < 0 || rows >= m_Rows || rows < 0)
@@ -65,12 +65,33 @@ private:
 };
 
 GameOfLifeGrid* g_GameOfLifeGrid;
+pthread_barrier_t g_barrier;
 int nprocs;
+
+// Read-only! Will be only set in main and read once from each thread to init their own counter
+int ro_gen;
 
 struct range {
 	int from;
 	int to;
 };
+
+
+range** ranges(int width, int nprocs, int* count) {
+	if (width < nprocs)
+		nprocs = width;
+
+	int range = width / nprocs;
+	struct range** ret = (struct range**)malloc(sizeof(struct range*) * nprocs);
+	for (int i = 0; i < nprocs; i++) {
+		ret[i] = (struct range*)malloc(sizeof(struct range));
+		ret[i]->from = range * i;
+		ret[i]->to = ret[i]->from + range;
+	}
+	ret[nprocs-1]->to += width % nprocs;
+	*count = nprocs;
+	return ret;
+}
 
 // Entry point
 int main(int argc, char* argv[])
@@ -79,8 +100,6 @@ int main(int argc, char* argv[])
 	ifstream inputFile;
 	int x, y;
 	struct timeval start_time, end_time, result_time;
-	pthread_t* threadID;
-	int status;
 
 	if (argc != 6) {
 		cout << "Usage: " << argv[0] << " <input file> <nprocs> <# of generations> <width> <height>" << endl;
@@ -89,7 +108,7 @@ int main(int argc, char* argv[])
 
 	inputFile.open(argv[1], ifstream::in);
 
-	if (inputFile.is_open() == false) {
+	if (!inputFile.is_open()) {
 		cout << "The "<< argv[1] << " file can not be opened" << endl;
 		return 1;
 	}
@@ -100,6 +119,7 @@ int main(int argc, char* argv[])
 	cols = atoi(argv[4]);
 	rows = atoi(argv[5]);
 
+	ro_gen = gen;
 	g_GameOfLifeGrid = new GameOfLifeGrid(cols, rows, gen);
 
 	while (inputFile.good()) {
@@ -108,39 +128,79 @@ int main(int argc, char* argv[])
 	}
 	inputFile.close();
 	
-	g_GameOfLifeGrid->dump();
-
-	while (g_GameOfLifeGrid->getGens() > 0) {
-		g_GameOfLifeGrid->next();
-		g_GameOfLifeGrid->dump();
-	}
-
 	gettimeofday(&start_time, NULL);
 
-    // HINT: YOU MAY NEED TO WRITE PTHREAD INVOKING CODES HERE
+	int thread_count;
+	range** rgs = ranges(cols, nprocs, &thread_count);
+
+	pthread_barrier_init(&g_barrier, NULL, thread_count + 1);
+
+	pthread_t threads[thread_count];
+
+	for (int i = 0; i < thread_count; i++) {
+		int res = pthread_create(&threads[i], NULL, &workerThread, rgs[i]);
+		if (res != 0) {
+			perror("pthread_create");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	// Use main thread for updating the grid. Avoid one more update thread
+	for (; gen > 0; gen--) {
+		pthread_barrier_wait(&g_barrier);
+		g_GameOfLifeGrid->update();
+		pthread_barrier_wait(&g_barrier);
+	}
+
+	// Everything is finished now
+	//
+	// So join threads
+	for (int i = 0; i < thread_count; i++) {
+		pthread_join(threads[i], NULL);
+	}
+	//
+	// and destroy barrier for cleanup
+	pthread_barrier_destroy(&g_barrier);
 	
+	// I think cleanup should be included in benchmarking too because it wouldn't be required for non-parallelized program
 	gettimeofday(&end_time, NULL);
 	timersub(&end_time, &start_time, &result_time);
+
+	g_GameOfLifeGrid->dump();
 	
 	cout << "Execution Time: " << result_time.tv_sec <<  "s" << endl;
 	//g_GameOfLifeGrid->dumpCoordinate();
 
 	cout << "Program end... " << endl;
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 // HINT: YOU MAY NEED TO FILL OUT BELOW FUNCTIONS
-void* workerThread(void *arg)
-{
+void* workerThread(void *arg) {
 	range r = *(range*)arg;
-	g_GameOfLifeGrid->next(r.from, r.to);
+	for (int gen = ro_gen; gen > 0; gen--) {
+		g_GameOfLifeGrid->next(r.from, r.to);
+		pthread_barrier_wait(&g_barrier);
+		pthread_barrier_wait(&g_barrier);
+	}
+	return NULL;
+}
+
+void* updateThread(void *arg) {
+	for (int gen = ro_gen; gen > 0; gen--) {
+		pthread_barrier_wait(&g_barrier);
+		g_GameOfLifeGrid->update();
+		pthread_barrier_wait(&g_barrier);
+	}
+	return NULL;
 }
 
 // to = exclusive
 void GameOfLifeGrid::next(const int from, const int to)
 {
-	for (int row = from; row < to; row++) {
-		for (int col = 0; col < this->getCols(); col++) {
+	int cols = this->getCols();
+	for (int col = 0; col < cols; col++) {
+		for (int row = from; row < to; row++) {
 			int countLiving = getNumOfLivingNeighbors(col, row);
 			countLiving += this->isLive(col, row);
 			if (countLiving == 4) {
@@ -152,12 +212,13 @@ void GameOfLifeGrid::next(const int from, const int to)
 			}
 		}
 	}
+}
 
+void GameOfLifeGrid::update()
+{
 	int** xchg = m_Temp;
 	m_Temp = m_Grid;
 	m_Grid = xchg;
-
-	this->decGen();
 }
 
 void GameOfLifeGrid::next()
@@ -169,15 +230,16 @@ int GameOfLifeGrid::getNumOfLivingNeighbors(int col, int row)
 {
 	int countLiving = 0;
 
+	// Keep as long as possible in same column for better caching
 	countLiving += this->isLive(col - 1, row - 1);
-	countLiving += this->isLive(col + 0, row - 1);
-	countLiving += this->isLive(col + 1, row - 1);
-
 	countLiving += this->isLive(col - 1, row + 0);
-	countLiving += this->isLive(col + 1, row + 0);
-
 	countLiving += this->isLive(col - 1, row + 1);
+
+	countLiving += this->isLive(col + 0, row - 1);
 	countLiving += this->isLive(col + 0, row + 1);
+
+	countLiving += this->isLive(col + 1, row - 1);
+	countLiving += this->isLive(col + 1, row + 0);
 	countLiving += this->isLive(col + 1, row + 1);
 
 	return countLiving;
@@ -242,16 +304,15 @@ GameOfLifeGrid::GameOfLifeGrid(int cols, int rows, int gen)
 		cout << "4 Memory allocation error " << endl;
 
 
-	for (int i=1; i< cols; i++) {
+	for (int i = 1; i < cols; i++) {
 		m_Grid[i] = m_Grid[i-1] + rows;
 		m_Temp[i] = m_Temp[i-1] + rows;
 	}
 
+	// TODO: change to calloc
 	for (int i=0; i < cols; i++) {
 		for (int j=0; j < rows; j++) {
 			m_Grid[i][j] = m_Temp[i][j] = 0;
 		}
 	}
-
 }
-
