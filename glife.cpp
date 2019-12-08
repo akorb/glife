@@ -33,6 +33,17 @@ public:
 	void update();
 	
 	int isLive(int cols, int rows) {
+		// Took me some time but I found a non-branch way
+		// to calculate "over the edges":
+		// But the requirements linked to a example implementation
+		// that does not use "over the edge" calculating
+		// So commented out but left  for reference
+
+		//rows = (m_Rows + rows) % m_Rows;
+		//cols = (m_Cols + cols) % m_Cols;
+
+		// No "over the edges"
+		// We consider all cells outside of the grid as dead
 		if (cols >= m_Cols || cols < 0 || rows >= m_Rows || rows < 0)
 			return DEAD;
 
