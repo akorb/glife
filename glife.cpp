@@ -7,6 +7,8 @@
 #define LIVE 1
 #define DEAD 0
 
+#define BENCHMARK
+
 # define timersub(a, b, result)                 \
 	do {                        \
 		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;           \
@@ -138,8 +140,6 @@ int main(int argc, char* argv[])
 		g_GameOfLifeGrid->setCell(x, y);
 	}
 	inputFile.close();
-
-	g_GameOfLifeGrid->dump();
 	
 	gettimeofday(&start_time, NULL);
 
@@ -179,12 +179,11 @@ int main(int argc, char* argv[])
 	gettimeofday(&end_time, NULL);
 	timersub(&end_time, &start_time, &result_time);
 
-	g_GameOfLifeGrid->dump();
-	
-	cout << "Execution Time: " << result_time.tv_sec <<  "s" << endl;
-	//g_GameOfLifeGrid->dumpCoordinate();
-
-	cout << "Program end... " << endl;
+	#ifdef BENCHMARK
+	cout << result_time.tv_sec << " ";
+	#else
+	g_GameOfLifeGrid->dumpCoordinate();
+	#endif
 	return EXIT_SUCCESS;
 }
 
