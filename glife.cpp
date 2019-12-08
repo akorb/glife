@@ -127,6 +127,8 @@ int main(int argc, char* argv[])
 		g_GameOfLifeGrid->setCell(x, y);
 	}
 	inputFile.close();
+
+	g_GameOfLifeGrid->dump();
 	
 	gettimeofday(&start_time, NULL);
 
@@ -249,12 +251,14 @@ int GameOfLifeGrid::getNumOfLivingNeighbors(int col, int row)
 void GameOfLifeGrid::dump() 
 {
 	cout << "===============================" << endl;
-
-	for (int i = 0; i < m_Cols; i++) {
+	
+	// This has terrible caching behavior,
+	// but performance doesn't matter here anymore
+	// so that's okay for this project
+	for (int j = 0; j < m_Rows; j++) {
+		cout << "[" << j << "] ";
 		
-		cout << "[" << i << "] ";
-		
-		for (int j = 0; j < m_Rows; j++) {
+		for (int i = 0; i < m_Cols; i++) {
 			cout << m_Grid[i][j];
 		}
 		
