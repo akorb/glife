@@ -209,9 +209,8 @@ void* updateThread(void *arg) {
 // to = exclusive
 void GameOfLifeGrid::next(const int from, const int to)
 {
-	int cols = this->getCols();
-	for (int col = 0; col < cols; col++) {
-		for (int row = from; row < to; row++) {
+	for (int col = from; col < to; col++) {
+		for (int row = 0; row < m_Rows; row++) {
 			int countLiving = getNumOfLivingNeighbors(col, row);
 			countLiving += this->isLive(col, row);
 			if (countLiving == 4) {
