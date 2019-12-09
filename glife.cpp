@@ -93,19 +93,7 @@ range** ranges(int width, int nprocs, int* count) {
 	if (width < nprocs)
 		nprocs = width;
 
-	// That's the naive approach because one thread could process up to (nprocs - 1) more columns than the other threads
-	// but the other threads still have to wait for this single thread at the barrier -> bad performance!
-	//int range = width / nprocs;
-	//struct range** ret = (struct range**)malloc(sizeof(struct range*) * nprocs);
-	//for (int i = 0; i < nprocs; i++) {
-	//	ret[i] = (struct range*)malloc(sizeof(struct range));
-	//	ret[i]->from = range * i;
-	//	ret[i]->to = ret[i]->from + range;
-	//}
-	
-	//ret[nprocs-1]->to += width % nprocs;
-
-	// With this approach thread will do maximum one more column than the other thread
+	// With this approach threads will do maximum one more column than the other threads
 	int range = width / nprocs;
 	int rest = width % nprocs;
 	int offset = 0;
