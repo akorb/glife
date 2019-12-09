@@ -87,6 +87,7 @@ int ro_gen;
 struct range {
 	int from;
 	int to;
+	bool updater;
 };
 
 
@@ -119,6 +120,7 @@ range** ranges(int width, int nprocs, int* count) {
 			offset++;
 			ret[i]->to++;
 		}
+		ret[i]->updater = false;
 	}
 
 	*count = nprocs;
@@ -165,11 +167,12 @@ int main(int argc, char* argv[])
 	int thread_count;
 	range** rgs = ranges(cols, nprocs, &thread_count);
 
-	pthread_barrier_init(&g_barrier, NULL, thread_count + 1);
+	pthread_barrier_init(&g_barrier, NULL, thread_count);
 
-	pthread_t threads[thread_count];
+	// -1 because we will use the main thread too
+	pthread_t threads[thread_count - 1];
 
-	for (int i = 0; i < thread_count; i++) {
+	for (int i = 0; i < thread_count - 1; i++) {
 		int res = pthread_create(&threads[i], NULL, &workerThread, rgs[i]);
 		if (res != 0) {
 			perror("pthread_create");
@@ -177,17 +180,14 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	// Use main thread for updating the grid. Avoid one more update thread
-	for (; gen > 0; gen--) {
-		pthread_barrier_wait(&g_barrier);
-		g_GameOfLifeGrid->update();
-		pthread_barrier_wait(&g_barrier);
-	}
+	// Only main thread uses the last range struct instance. So it will act as the updater too.
+	rgs[thread_count - 1]->updater = true;
+	workerThread(rgs[thread_count - 1]);
 
 	// Everything is finished now
 	//
 	// So join threads
-	for (int i = 0; i < thread_count; i++) {
+	for (int i = 0; i < thread_count - 1; i++) {
 		pthread_join(threads[i], NULL);
 	}
 	//
@@ -211,15 +211,9 @@ void* workerThread(void *arg) {
 	for (int gen = ro_gen; gen > 0; gen--) {
 		g_GameOfLifeGrid->next(r.from, r.to);
 		pthread_barrier_wait(&g_barrier);
-		pthread_barrier_wait(&g_barrier);
-	}
-	return NULL;
-}
-
-void* updateThread(void *arg) {
-	for (int gen = ro_gen; gen > 0; gen--) {
-		pthread_barrier_wait(&g_barrier);
-		g_GameOfLifeGrid->update();
+		if (r.updater) {
+			g_GameOfLifeGrid->update();
+		}
 		pthread_barrier_wait(&g_barrier);
 	}
 	return NULL;
