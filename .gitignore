@@ -1,5 +1,8 @@
-glife
-.vscode/settings.json
-.vscode/tasks.json
-.vscode/launch.json
+/glife
+/.vscode/settings.json
+/.vscode/tasks.json
+/.vscode/launch.json
 /benchmark.m
+/screenshots/
+/benchmarks/
+/report.odt
