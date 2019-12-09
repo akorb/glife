@@ -7,8 +7,6 @@
 #define LIVE 1
 #define DEAD 0
 
-#define BENCHMARK
-
 # define timersub(a, b, result)                 \
 	do {                        \
 		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;           \
