@@ -20,6 +20,7 @@ do_benchmark 'puf' 300 300 'g'
 
 do_benchmark 'glider' 10000 200 'm'
 do_benchmark 'glider' 200 10000 'c'
-
+echo "xlabel('# threads')"
+echo "ylabel('time [s]')"
 echo 'hold off' >> benchmark.m
 echo "legend('Interpreter', 'none')" >> benchmark.m
