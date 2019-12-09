@@ -11,7 +11,7 @@ do_benchmark() {
         ./glife sample_inputs/$1 $nprocs 10000 $2 $3 >> benchmark.m
     done
     echo '];' >> benchmark.m
-    echo "plot(x, $1_$2x$3, '$4-o', 'DisplayName', '$1_$2x$3', 'LineWidth', 1.35, 'MarkerFaceColor', '$4')" >> benchmark.m
+    echo "semilogx(x, $1_$2x$3, '$4-o', 'DisplayName', '$1_$2x$3', 'LineWidth', 1.35, 'MarkerFaceColor', '$4')" >> benchmark.m
     echo 'hold on' >> benchmark.m
 }
 
@@ -25,5 +25,6 @@ do_benchmark 'glider' 10000 200 'm'
 do_benchmark 'glider' 200 10000 'c'
 echo "xlabel('# threads')" >> benchmark.m
 echo "ylabel('time [s]')" >> benchmark.m
+echo "xticks([1 2 4 8 16 32 64 128])" >> benchmark.m
 echo 'hold off' >> benchmark.m
 echo "legend('Interpreter', 'none')" >> benchmark.m
