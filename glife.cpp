@@ -89,7 +89,7 @@ struct thread_info {
 };
 
 
-thread_info** ranges(int width, int nprocs, int* count) {
+thread_info* ranges(int width, int nprocs, int* count) {
 	if (width < nprocs)
 		nprocs = width;
 
@@ -97,16 +97,15 @@ thread_info** ranges(int width, int nprocs, int* count) {
 	int range = width / nprocs;
 	int rest = width % nprocs;
 	int offset = 0;
-	struct thread_info** ret = (struct thread_info**)malloc(sizeof(struct thread_info*) * nprocs);
+	struct thread_info* ret = (struct thread_info*)malloc(sizeof(struct thread_info) * nprocs);
 	for (int i = 0; i < nprocs; i++) {
-		ret[i] = (struct thread_info*)malloc(sizeof(struct thread_info));
-		ret[i]->from = range * i + offset;
-		ret[i]->to = ret[i]->from + range;
+		ret[i].from = range * i + offset;
+		ret[i].to = ret[i].from + range;
 		if (offset < rest) {
 			offset++;
-			ret[i]->to++;
+			ret[i].to++;
 		}
-		ret[i]->updater = false;
+		ret[i].updater = false;
 	}
 
 	*count = nprocs;
@@ -151,7 +150,7 @@ int main(int argc, char* argv[])
 	gettimeofday(&start_time, NULL);
 
 	int thread_count;
-	thread_info** rgs = ranges(cols, nprocs, &thread_count);
+	thread_info* rgs = ranges(cols, nprocs, &thread_count);
 
 	pthread_barrier_init(&g_barrier, NULL, thread_count);
 
@@ -159,7 +158,7 @@ int main(int argc, char* argv[])
 	pthread_t threads[thread_count - 1];
 
 	for (int i = 0; i < thread_count - 1; i++) {
-		int res = pthread_create(&threads[i], NULL, &workerThread, rgs[i]);
+		int res = pthread_create(&threads[i], NULL, &workerThread, &rgs[i]);
 		if (res != 0) {
 			perror("pthread_create");
 			exit(EXIT_FAILURE);
@@ -167,8 +166,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Only main thread uses the last range struct instance. So it will act as the updater too.
-	rgs[thread_count - 1]->updater = true;
-	workerThread(rgs[thread_count - 1]);
+	rgs[thread_count - 1].updater = true;
+	workerThread(&rgs[thread_count - 1]);
 
 	// Everything is finished now
 	//
