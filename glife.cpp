@@ -82,14 +82,14 @@ int nprocs;
 // Read-only! Will be only set in main and read once from each thread to init their own counter
 int ro_gen;
 
-struct range {
+struct thread_info {
 	int from;
 	int to;
 	bool updater;
 };
 
 
-range** ranges(int width, int nprocs, int* count) {
+thread_info** ranges(int width, int nprocs, int* count) {
 	if (width < nprocs)
 		nprocs = width;
 
@@ -97,9 +97,9 @@ range** ranges(int width, int nprocs, int* count) {
 	int range = width / nprocs;
 	int rest = width % nprocs;
 	int offset = 0;
-	struct range** ret = (struct range**)malloc(sizeof(struct range*) * nprocs);
+	struct thread_info** ret = (struct thread_info**)malloc(sizeof(struct thread_info*) * nprocs);
 	for (int i = 0; i < nprocs; i++) {
-		ret[i] = (struct range*)malloc(sizeof(struct range));
+		ret[i] = (struct thread_info*)malloc(sizeof(struct thread_info));
 		ret[i]->from = range * i + offset;
 		ret[i]->to = ret[i]->from + range;
 		if (offset < rest) {
@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
 	gettimeofday(&start_time, NULL);
 
 	int thread_count;
-	range** rgs = ranges(cols, nprocs, &thread_count);
+	thread_info** rgs = ranges(cols, nprocs, &thread_count);
 
 	pthread_barrier_init(&g_barrier, NULL, thread_count);
 
@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
 }
 
 void* workerThread(void *arg) {
-	range r = *(range*)arg;
+	thread_info r = *(thread_info*)arg;
 	for (int gen = ro_gen; gen > 0; gen--) {
 		g_GameOfLifeGrid->next(r.from, r.to);
 		pthread_barrier_wait(&g_barrier);
