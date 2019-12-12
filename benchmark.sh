@@ -25,6 +25,7 @@ do_benchmark 'glider' 10000 200 'm'
 do_benchmark 'glider' 200 10000 'c'
 echo "xlabel('# threads')" >> benchmark.m
 echo "ylabel('time [s]')" >> benchmark.m
-echo "xticks([1 2 4 8 16 32 64 128])" >> benchmark.m
+echo "xticks(x)" >> benchmark.m
+echo "xlim([x(1) x(end)])" >> benchmark.m
 echo 'hold off' >> benchmark.m
 echo "legend('Interpreter', 'none')" >> benchmark.m
